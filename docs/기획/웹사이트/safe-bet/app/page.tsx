@@ -9,7 +9,7 @@ import { loadListing, saveListing } from "@/lib/storage";
 import { REGION_OPTIONS, isRegionValue, policiesForRegion } from "@/lib/region";
 import { getRequiredQuestions } from "@/lib/questions";
 import { buildQuestionSteps } from "@/lib/steps";
-import { ProgressBar, StepNav } from "./Stepper";
+import { AppBar, BottomCta, OptionButton, StepHeading } from "./Stepper";
 
 const policies = policiesData as PolicyMeta[];
 
@@ -44,8 +44,7 @@ export default function InputPage() {
 
   // 뒤에 이어질 판정질문 스텝 수까지 합쳐 전체 진행률을 보여준다.
   const totalSteps = useMemo(() => {
-    if (!form.region) return 2 + buildQuestionSteps(getRequiredQuestions(policies)).length;
-    const scoped = policiesForRegion(policies, form.region);
+    const scoped = form.region ? policiesForRegion(policies, form.region) : policies;
     return 2 + buildQuestionSteps(getRequiredQuestions(scoped)).length;
   }, [form.region]);
 
@@ -78,160 +77,136 @@ export default function InputPage() {
     router.push("/eligibility");
   }
 
-  function handlePrev() {
+  function handleBack() {
     setError(null);
-    if (step === 0) return;
-    setStep(0);
+    if (step > 0) setStep(step - 1);
   }
 
   return (
-    <main className="mx-auto flex max-w-lg flex-col gap-6 px-5 py-10">
-      <div className="text-center">
-        <p className="text-sm font-semibold text-brand-700">청년 주거지원 실부담 계산기</p>
-        <h1 className="mt-2 text-2xl font-extrabold leading-snug">
-          이 방에 살면, 지원금을 반영해
-          <br />내가 실제로 얼마를 내야 할까?
-        </h1>
-      </div>
+    <div className="mx-auto flex min-h-screen max-w-lg flex-col px-5">
+      <AppBar onBack={handleBack} current={step + 1} total={totalSteps} />
 
-      <section className="flex flex-col gap-5 rounded-2xl border border-ink-200 bg-white p-5 shadow-sm">
-        <ProgressBar current={step + 1} total={totalSteps} />
+      <main key={step} className="step-in flex flex-1 flex-col gap-7 py-7">
+        {step === 0 ? (
+          <>
+            <StepHeading
+              title={"어떤 방을 보고 계신가요?"}
+              description="계약 조건을 넣으면 받을 수 있는 지원금을 반영해 실제 부담액을 계산해드려요."
+            />
 
-        <div key={step} className="step-in flex flex-col gap-4">
-          <h2 className="text-sm font-bold text-ink-900">
-            {step === 0 ? "매물 기본 조건" : "비용 · 기간"}
-          </h2>
+            <Field label="거주 예정 지역">
+              <select
+                className="input"
+                value={form.region}
+                onChange={(e) => update("region", e.target.value)}
+              >
+                <option value="">선택해주세요</option>
+                {REGION_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </Field>
 
-          {step === 0 ? (
-            <>
-              <Field label="거주 예정 지역">
-                <select
-                  className="input"
-                  value={form.region}
-                  onChange={(e) => update("region", e.target.value)}
-                >
-                  <option value="">선택해주세요</option>
-                  {REGION_OPTIONS.map((o) => (
-                    <option key={o.value} value={o.value}>
-                      {o.label}
-                    </option>
-                  ))}
-                </select>
-              </Field>
+            <Field label="계약 형태">
+              <div className="flex flex-col gap-2">
+                {(["연세", "월세"] as ContractType[]).map((type) => (
+                  <OptionButton
+                    key={type}
+                    active={form.contractType === type}
+                    onClick={() => update("contractType", type)}
+                  >
+                    {type}
+                  </OptionButton>
+                ))}
+              </div>
+            </Field>
 
-              <Field label="계약 형태">
-                <div className="flex gap-2">
-                  {(["연세", "월세"] as ContractType[]).map((type) => (
-                    <button
-                      key={type}
-                      type="button"
-                      onClick={() => update("contractType", type)}
-                      className={`flex-1 rounded-lg border px-3 py-2 text-sm font-semibold ${
-                        form.contractType === type
-                          ? "border-brand-600 bg-brand-50 text-brand-900"
-                          : "border-ink-200 text-ink-500"
-                      }`}
-                    >
-                      {type}
-                    </button>
-                  ))}
-                </div>
-              </Field>
+            <Field label="보증금 (원)">
+              <NumberInput value={form.deposit} onChange={(v) => update("deposit", v)} />
+            </Field>
 
-              <Field label="보증금 (원)">
-                <NumberInput value={form.deposit} onChange={(v) => update("deposit", v)} />
-              </Field>
+            <Field label={form.contractType === "연세" ? "연세 선납액 (원)" : "월세액 (원)"}>
+              <NumberInput
+                value={form.rentOrYearlyAmount}
+                onChange={(v) => update("rentOrYearlyAmount", v)}
+              />
+            </Field>
+          </>
+        ) : (
+          <>
+            <StepHeading
+              title={"비용과 기간을 알려주세요"}
+              description="관리비와 이사비까지 넣어야 실제로 나가는 돈을 정확히 계산할 수 있어요."
+            />
 
-              <Field label={form.contractType === "연세" ? "연세 선납액 (원)" : "월세액 (원)"}>
-                <NumberInput
-                  value={form.rentOrYearlyAmount}
-                  onChange={(v) => update("rentOrYearlyAmount", v)}
-                />
-              </Field>
-            </>
-          ) : (
-            <>
-              <Field label="월 관리비 (원)">
-                <NumberInput
-                  value={form.managementFee}
-                  onChange={(v) => update("managementFee", v)}
-                />
-              </Field>
+            <Field label="월 관리비 (원)">
+              <NumberInput value={form.managementFee} onChange={(v) => update("managementFee", v)} />
+            </Field>
 
-              <Field label="계약 시작 예정일">
-                <input
-                  type="date"
-                  className="input"
-                  value={form.contractStartDate}
-                  onChange={(e) => update("contractStartDate", e.target.value)}
-                />
-              </Field>
+            <Field label="계약 시작 예정일">
+              <input
+                type="date"
+                className="input"
+                value={form.contractStartDate}
+                onChange={(e) => update("contractStartDate", e.target.value)}
+              />
+            </Field>
 
-              <Field label="거주 예정 개월 수">
-                <NumberInput value={form.months} onChange={(v) => update("months", v)} />
-              </Field>
+            <Field label="거주 예정 개월 수">
+              <NumberInput value={form.months} onChange={(v) => update("months", v)} />
+            </Field>
 
-              <Field label="이사비 등 정책이 요구하는 일시 지출 (원, 없으면 0)">
-                <NumberInput
-                  value={form.oneTimeMoveCost}
-                  onChange={(v) => update("oneTimeMoveCost", v)}
-                />
-              </Field>
+            <Field label="이사비 등 정책이 요구하는 일시 지출 (원, 없으면 0)">
+              <NumberInput
+                value={form.oneTimeMoveCost}
+                onChange={(v) => update("oneTimeMoveCost", v)}
+              />
+            </Field>
 
-              {form.contractType === "연세" && monthlyEquivalent > 0 && (
-                <p className="rounded-lg bg-brand-50 px-3 py-2 text-sm text-brand-900">
-                  연세 {form.rentOrYearlyAmount.toLocaleString()}원 ÷ {form.months}개월 = 월 환산{" "}
-                  <strong>{monthlyEquivalent.toLocaleString()}원</strong>
-                </p>
-              )}
+            {form.contractType === "연세" && monthlyEquivalent > 0 && (
+              <p className="rounded-xl bg-brand-50 px-4 py-3 text-sm text-brand-900">
+                연세 {form.rentOrYearlyAmount.toLocaleString()}원 ÷ {form.months}개월 = 월 환산{" "}
+                <strong>{monthlyEquivalent.toLocaleString()}원</strong>
+              </p>
+            )}
 
-              <Field label="이 조건을 어디서 확인했나요?">
-                <select
-                  className="input"
-                  value={form.sourceType}
-                  onChange={(e) =>
-                    update("sourceType", e.target.value as ListingInput["sourceType"])
-                  }
-                >
-                  <option value="부동산 광고">부동산 광고</option>
-                  <option value="중개사 안내">중개사 안내</option>
-                  <option value="계약서">계약서</option>
-                </select>
-              </Field>
+            <Field label="이 조건을 어디서 확인했나요?">
+              <select
+                className="input"
+                value={form.sourceType}
+                onChange={(e) => update("sourceType", e.target.value as ListingInput["sourceType"])}
+              >
+                <option value="부동산 광고">부동산 광고</option>
+                <option value="중개사 안내">중개사 안내</option>
+                <option value="계약서">계약서</option>
+              </select>
+            </Field>
 
-              <label className="flex items-start gap-2 text-sm text-ink-600">
-                <input
-                  type="checkbox"
-                  className="mt-1"
-                  checked={form.confirmedMatchesActualContract}
-                  onChange={(e) => update("confirmedMatchesActualContract", e.target.checked)}
-                />
-                위 조건은 제가 검토 중인 매물의 실제 계약 조건과 일치합니다.
-              </label>
-            </>
-          )}
-        </div>
+            <label className="flex items-start gap-3 rounded-xl bg-sand-50 px-4 py-4 text-sm leading-relaxed text-ink-600">
+              <input
+                type="checkbox"
+                className="mt-0.5 h-5 w-5 shrink-0 accent-[var(--color-brand-600)]"
+                checked={form.confirmedMatchesActualContract}
+                onChange={(e) => update("confirmedMatchesActualContract", e.target.checked)}
+              />
+              위 조건은 제가 검토 중인 매물의 실제 계약 조건과 일치합니다.
+            </label>
+          </>
+        )}
 
         {error && <p className="text-sm font-semibold text-red-600">{error}</p>}
+      </main>
 
-        {step === 0 ? (
-          <button
-            onClick={handleNext}
-            className="mt-2 rounded-xl bg-brand-600 py-3 text-base font-bold text-white active:scale-[0.99]"
-          >
-            다음
-          </button>
-        ) : (
-          <StepNav onPrev={handlePrev} onNext={handleNext} nextLabel="다음: 정책 판정 질문으로" />
-        )}
-      </section>
-    </main>
+      <BottomCta onClick={handleNext}>다음</BottomCta>
+    </div>
   );
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <label className="flex flex-col gap-1 text-sm font-semibold text-ink-700">
+    <label className="flex flex-col gap-2 text-sm font-semibold text-ink-700">
       {label}
       {children}
     </label>
@@ -242,6 +217,7 @@ function NumberInput({ value, onChange }: { value: number; onChange: (v: number)
   return (
     <input
       type="number"
+      inputMode="numeric"
       className="input"
       value={Number.isFinite(value) ? value : 0}
       onChange={(e) => onChange(Number(e.target.value))}

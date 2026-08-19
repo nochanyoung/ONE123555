@@ -8,6 +8,7 @@ import type { ListingInput, LoanProductMeta, PolicyMeta, PolicyResult, PolicySta
 import { buildCalculationSummary } from "@/lib/summary";
 import { loadListing, loadProfile } from "@/lib/storage";
 import { policiesForRegion } from "@/lib/region";
+import { ResultAppBar } from "../Stepper";
 
 const policies = policiesData as PolicyMeta[];
 const loanProducts = loanProductsData as LoanProductMeta[];
@@ -68,11 +69,14 @@ export default function ResultPage() {
   })).filter((g) => g.items.length > 0);
 
   return (
-    <main className="mx-auto flex max-w-lg flex-col gap-6 px-5 py-10">
-      <div>
-        <p className="text-sm font-semibold text-brand-700">3. 판정 결과</p>
-        <h1 className="mt-1 text-xl font-extrabold">최대 지원 가능액과 최종 예상 주거비</h1>
-      </div>
+    <div className="mx-auto flex min-h-screen max-w-lg flex-col px-5">
+      <ResultAppBar onBack={() => router.push("/eligibility")} />
+
+      <main className="flex flex-col gap-6 pb-10 pt-2">
+        <h1 className="text-2xl font-extrabold leading-snug text-ink-900">
+          최대 지원 가능액과
+          <br />최종 예상 주거비예요
+        </h1>
 
       <section className="rounded-2xl border-2 border-brand-600 bg-brand-50 p-5">
         <p className="text-xs font-semibold text-brand-900">최대 지원 가능액 (12개월 기준)</p>
@@ -176,6 +180,7 @@ export default function ResultPage() {
         답변 수정하기
       </button>
     </main>
+    </div>
   );
 }
 
