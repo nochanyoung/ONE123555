@@ -91,6 +91,23 @@ export interface CombinationResult {
   totalAmount: number;
 }
 
+// 대출·보증료 지원 등 "현금 지원금"이 아닌 상품. 이자 절감액 등은 계산하지 않고 안내만 제공한다.
+// 최대 지원 가능액(현금 지원 합계)에는 포함하지 않는다 — 성격이 다른 금액을 섞으면
+// 실제보다 더 많이 받는 것처럼 보일 수 있기 때문이다.
+export interface LoanProductMeta {
+  id: string;
+  name: string;
+  agency: string;
+  regionScope: string;
+  productType: "loan_interest_subsidy" | "guarantee_fee_subsidy";
+  summary: string;
+  sourceUrl: string;
+  applyUrl: string;
+  verifiedAt: string | null;
+  effectiveYear: number;
+  notes: string;
+}
+
 export interface CalculationSummary {
   nominalTotalCost: number; // 명목 총 지출
   maxSupportAmount: number; // 최대 지원 가능액

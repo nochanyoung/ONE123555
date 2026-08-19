@@ -9,6 +9,7 @@ const moland = policies.find((p) => p.id === "moland-youth-rent-support")!;
 const iksan = policies.find((p) => p.id === "iksan-youth-rent-support")!;
 const jeonbuk = policies.find((p) => p.id === "jeonbuk-youth-settlement-support")!;
 const iksanMoving = policies.find((p) => p.id === "iksan-newcomer-moving-cost-support")!;
+const housingBenefitSplit = policies.find((p) => p.id === "youth-housing-benefit-split-payment")!;
 
 describe("국토부 청년월세 한시특별지원", () => {
   it("모든 조건을 충족하면 예상 적용이고, 월 상한×연세 환산월세 중 작은 값 × 개월수로 계산한다", () => {
@@ -149,6 +150,39 @@ describe("익산시 전입 청년 이사비·중개보수 지원사업", () => {
       iksanMoving,
       makeProfile({ birthDate: "1985-01-01" }),
       makeListing({ oneTimeMoveCost: 300000 }),
+      TODAY
+    );
+    expect(result.status).toBe("대상아님");
+  });
+});
+
+describe("청년 주거급여 분리지급", () => {
+  it("19~29세, 부모와 별도 거주, 원가구 소득 48% 이하면 예상 적용이다", () => {
+    const result = evaluatePolicy(
+      housingBenefitSplit,
+      makeProfile({ birthDate: "2001-01-01", originHouseholdMonthlyIncome: 1000000 }),
+      makeListing({ contractType: "월세", rentOrYearlyAmount: 150000, months: 12 }),
+      TODAY
+    );
+    expect(result.status).toBe("예상적용");
+    expect(result.estimatedAmount).toBe(150000 * 12); // 월세(15만)가 상한(17만)보다 낮음
+  });
+
+  it("만 30세 이상이면 대상아님이다", () => {
+    const result = evaluatePolicy(
+      housingBenefitSplit,
+      makeProfile({ birthDate: "1995-01-01", originHouseholdMonthlyIncome: 1000000 }),
+      makeListing(),
+      TODAY
+    );
+    expect(result.status).toBe("대상아님");
+  });
+
+  it("원가구 소득이 중위 48%를 초과하면 대상아님이다", () => {
+    const result = evaluatePolicy(
+      housingBenefitSplit,
+      makeProfile({ birthDate: "2001-01-01", originHouseholdMonthlyIncome: 3000000 }),
+      makeListing(),
       TODAY
     );
     expect(result.status).toBe("대상아님");

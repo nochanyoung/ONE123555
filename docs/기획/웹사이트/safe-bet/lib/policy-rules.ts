@@ -156,9 +156,33 @@ const jeonbukSettlement: RuleFn = (p, asOf) => {
 
 const iksanMovingCost: RuleFn = (p, asOf) => [ageCheck(p.birthDate, asOf, 18, 39)];
 
+const youthHousingBenefitSplit: RuleFn = (p, asOf) => {
+  const householdSize = p.householdSize === "unknown" ? 1 : p.householdSize;
+  const originCeiling = medianIncomeCeiling(householdSize, 0.48);
+
+  return [
+    ageCheck(p.birthDate, asOf, 19, 29),
+    boolCheck(
+      "livesApartFromParents",
+      "부모와 다른 시·군·구에 거주 (별도 거주로 근사 판정)",
+      p.livesApartFromParents,
+      true,
+      "부모님 주민등록상 주소지와 본인 주소지가 서로 다른 시·군·구인지 확인하세요."
+    ),
+    maxCeilingCheck(
+      "originHouseholdIncome",
+      `원가구 소득 중위소득 48% 이하 (월 ${originCeiling.toLocaleString()}원 이하)`,
+      p.originHouseholdMonthlyIncome,
+      originCeiling,
+      "행정복지센터에서 부모 가구 소득인정액을 확인하세요."
+    ),
+  ];
+};
+
 export const POLICY_RULES: Record<string, RuleFn> = {
   "moland-youth-rent-support": moland,
   "iksan-youth-rent-support": iksan,
   "jeonbuk-youth-settlement-support": jeonbukSettlement,
   "iksan-newcomer-moving-cost-support": iksanMovingCost,
+  "youth-housing-benefit-split-payment": youthHousingBenefitSplit,
 };

@@ -3,11 +3,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import policiesData from "@/data/policies.json";
-import type { ListingInput, PolicyMeta, PolicyResult, PolicyStatus } from "@/lib/types";
+import loanProductsData from "@/data/loan-products.json";
+import type { ListingInput, LoanProductMeta, PolicyMeta, PolicyResult, PolicyStatus } from "@/lib/types";
 import { buildCalculationSummary } from "@/lib/summary";
 import { loadListing, loadProfile } from "@/lib/storage";
 
 const policies = policiesData as PolicyMeta[];
+const loanProducts = loanProductsData as LoanProductMeta[];
 
 const STATUS_ORDER: PolicyStatus[] = ["예상적용", "조건충족시가능", "대상아님", "신청불가"];
 const STATUS_STYLE: Record<PolicyStatus, string> = {
@@ -120,6 +122,37 @@ export default function ResultPage() {
                 <PolicyCard key={r.policy.id} result={r} />
               ))}
             </div>
+          </div>
+        ))}
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <div>
+          <h2 className="text-sm font-bold text-stone-500">이용 가능한 대출·보증 상품 ({loanProducts.length})</h2>
+          <p className="mt-1 text-[11px] text-stone-400">
+            아래는 현금 지원금이 아닌 대출·보증료 상품입니다. 이자 절감액을 계산하지 않으며, 위 "최대
+            지원 가능액"에도 포함되지 않습니다 — 대출과 지원금을 같은 금액으로 섞으면 실제보다 많이
+            받는 것처럼 보일 수 있기 때문입니다. 자격·한도는 안내일 뿐이니 정확한 조건은 취급 기관에
+            문의하세요.
+          </p>
+        </div>
+        {loanProducts.map((product) => (
+          <div key={product.id} className="rounded-2xl border border-stone-200 bg-stone-50 p-4">
+            <p className="text-sm font-bold text-stone-800">{product.name}</p>
+            <p className="text-xs text-stone-400">{product.agency} · {product.regionScope}</p>
+            <p className="mt-2 text-xs text-stone-500">{product.summary}</p>
+            <div className="mt-3 flex flex-wrap gap-3 text-xs">
+              <a href={product.sourceUrl} target="_blank" rel="noreferrer" className="font-semibold text-stone-500 underline">
+                공식 출처
+              </a>
+              <a href={product.applyUrl} target="_blank" rel="noreferrer" className="font-semibold text-brand underline">
+                신청 페이지로 이동
+              </a>
+            </div>
+            <p className="mt-2 text-[11px] text-stone-400">
+              {product.effectiveYear}년 기준 · {product.verifiedAt ? `${product.verifiedAt} 확인` : "팀 교차검수 전 (미검증 초안)"}
+            </p>
+            {product.notes && <p className="mt-1 text-[11px] text-stone-400">{product.notes}</p>}
           </div>
         ))}
       </section>
