@@ -8,6 +8,7 @@ const policies = policiesData as PolicyMeta[];
 const moland = policies.find((p) => p.id === "moland-youth-rent-support")!;
 const iksan = policies.find((p) => p.id === "iksan-youth-rent-support")!;
 const jeonbuk = policies.find((p) => p.id === "jeonbuk-youth-settlement-support")!;
+const iksanMoving = policies.find((p) => p.id === "iksan-newcomer-moving-cost-support")!;
 
 describe("국토부 청년월세 한시특별지원", () => {
   it("모든 조건을 충족하면 예상 적용이고, 월 상한×연세 환산월세 중 작은 값 × 개월수로 계산한다", () => {
@@ -118,5 +119,38 @@ describe("전북청년 지역정착 지원사업", () => {
     );
     expect(result.status).toBe("예상적용");
     expect(result.estimatedAmount).toBe(300000 * 12);
+  });
+});
+
+describe("익산시 전입 청년 이사비·중개보수 지원사업", () => {
+  it("18~39세면 예상 적용이고, 이사비 실비와 상한(50만원) 중 작은 값을 지급한다", () => {
+    const result = evaluatePolicy(
+      iksanMoving,
+      makeProfile({ birthDate: "2000-01-01" }),
+      makeListing({ oneTimeMoveCost: 300000 }),
+      TODAY
+    );
+    expect(result.status).toBe("예상적용");
+    expect(result.estimatedAmount).toBe(300000);
+  });
+
+  it("이사비 실비가 상한(50만원)을 넘으면 상한으로 캡핑한다", () => {
+    const result = evaluatePolicy(
+      iksanMoving,
+      makeProfile({ birthDate: "2000-01-01" }),
+      makeListing({ oneTimeMoveCost: 800000 }),
+      TODAY
+    );
+    expect(result.estimatedAmount).toBe(500000);
+  });
+
+  it("만 39세를 초과하면 대상아님이다", () => {
+    const result = evaluatePolicy(
+      iksanMoving,
+      makeProfile({ birthDate: "1985-01-01" }),
+      makeListing({ oneTimeMoveCost: 300000 }),
+      TODAY
+    );
+    expect(result.status).toBe("대상아님");
   });
 });

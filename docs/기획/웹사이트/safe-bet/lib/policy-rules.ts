@@ -154,8 +154,11 @@ const jeonbukSettlement: RuleFn = (p, asOf) => {
   ];
 };
 
+const iksanMovingCost: RuleFn = (p, asOf) => [ageCheck(p.birthDate, asOf, 18, 39)];
+
 export const POLICY_RULES: Record<string, RuleFn> = {
   "moland-youth-rent-support": moland,
   "iksan-youth-rent-support": iksan,
   "jeonbuk-youth-settlement-support": jeonbukSettlement,
+  "iksan-newcomer-moving-cost-support": iksanMovingCost,
 };
