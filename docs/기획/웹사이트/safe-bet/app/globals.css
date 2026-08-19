@@ -54,3 +54,25 @@
 .input:focus {
   @apply border-brand-600 ring-2 ring-brand-200;
 }
+
+/* 스텝 전환 — 다음 화면이 오른쪽에서 밀려 들어온다. */
+@keyframes step-in {
+  from {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.step-in {
+  animation: step-in 0.22s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .step-in {
+    animation: none;
+  }
+}

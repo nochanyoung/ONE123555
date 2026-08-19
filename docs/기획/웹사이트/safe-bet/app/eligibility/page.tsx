@@ -5,7 +5,10 @@ import { useRouter } from "next/navigation";
 import policiesData from "@/data/policies.json";
 import type { EligibilityProfile, PolicyMeta } from "@/lib/types";
 import { getRequiredQuestions, type QuestionDef } from "@/lib/questions";
+import { buildQuestionSteps } from "@/lib/steps";
+import { policiesForRegion } from "@/lib/region";
 import { loadListing, loadProfile, saveProfile } from "@/lib/storage";
+import { ProgressBar, StepNav } from "../Stepper";
 
 const policies = policiesData as PolicyMeta[];
 
@@ -30,34 +33,62 @@ const DEFAULT_PROFILE: EligibilityProfile = {
 
 export default function EligibilityPage() {
   const router = useRouter();
-  const questions = useMemo(() => getRequiredQuestions(policies), []);
+  const [region, setRegion] = useState<string | null>(null);
   const [profile, setProfile] = useState<EligibilityProfile>(DEFAULT_PROFILE);
+  const [step, setStep] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!loadListing()) {
+    const listing = loadListing();
+    if (!listing) {
       router.replace("/");
       return;
     }
+    setRegion(listing.region);
     const saved = loadProfile();
     if (saved) setProfile(saved);
   }, [router]);
+
+  // 지역에 해당하지 않는 정책은 후보에서 빠지고, 그 정책만 쓰던 질문도 함께 사라진다.
+  // 빠진 질문은 어떤 판정 규칙도 참조하지 않으므로 결과에 영향이 없다.
+  const steps = useMemo(() => {
+    if (region === null) return [];
+    return buildQuestionSteps(getRequiredQuestions(policiesForRegion(policies, region)));
+  }, [region]);
 
   function update<K extends keyof EligibilityProfile>(key: K, value: EligibilityProfile[K]) {
     setProfile((prev) => ({ ...prev, [key]: value }));
   }
 
-  function handleSubmit() {
-    if (!profile.birthDate) return setError("생년월일을 입력해주세요.");
+  function handleNext() {
+    const current = steps[step];
+    // 생년월일은 나이 요건 때문에 '모름'을 허용하지 않는 유일한 질문이다.
+    if (current?.questions.some((q) => q.key === "birthDate") && !profile.birthDate) {
+      return setError("생년월일을 입력해주세요.");
+    }
     setError(null);
-    saveProfile(profile);
+    saveProfile(profile); // 스텝마다 저장 — 새로고침해도 답이 남는다.
+    if (step < steps.length - 1) return setStep(step + 1);
     router.push("/result");
   }
+
+  function handlePrev() {
+    setError(null);
+    if (step === 0) return router.push("/");
+    setStep(step - 1);
+  }
+
+  if (region === null || steps.length === 0) {
+    return <main className="p-10 text-center text-ink-500">불러오는 중...</main>;
+  }
+
+  const current = steps[step];
+  const isLast = step === steps.length - 1;
 
   return (
     <main className="mx-auto flex max-w-lg flex-col gap-6 px-5 py-10">
       <div>
-        <p className="text-sm font-semibold text-brand-700">2. 정책 판정 질문</p>
+        <p className="text-sm font-semibold text-brand-700">정책 판정 질문</p>
         <h1 className="mt-1 text-xl font-extrabold">모르면 &lsquo;모름&rsquo;을 선택하세요</h1>
         <p className="mt-1 text-sm text-ink-500">
           공식 소득인정액처럼 정확히 모르는 값은 임의로 추정하지 않습니다. 모름으로 두면
@@ -66,23 +97,25 @@ export default function EligibilityPage() {
       </div>
 
       <section className="flex flex-col gap-5 rounded-2xl border border-ink-200 bg-white p-5 shadow-sm">
-        {questions.map((q) => (
-          <QuestionField
-            key={q.key}
-            question={q}
-            value={profile[q.key]}
-            onChange={(v) => update(q.key, v as never)}
-          />
-        ))}
+        {/* 계약조건 2스텝이 앞에 있으므로 전체 진행률에 더해서 보여준다. */}
+        <ProgressBar current={step + 3} total={steps.length + 2} />
+
+        <div key={step} className="step-in flex flex-col gap-5">
+          <h2 className="text-sm font-bold text-ink-900">{current.title}</h2>
+
+          {current.questions.map((q) => (
+            <QuestionField
+              key={q.key}
+              question={q}
+              value={profile[q.key]}
+              onChange={(v) => update(q.key, v as never)}
+            />
+          ))}
+        </div>
 
         {error && <p className="text-sm font-semibold text-red-600">{error}</p>}
 
-        <button
-          onClick={handleSubmit}
-          className="mt-2 rounded-xl bg-brand-600 py-3 text-base font-bold text-white active:scale-[0.99]"
-        >
-          결과 확인하기
-        </button>
+        <StepNav onPrev={handlePrev} onNext={handleNext} nextLabel={isLast ? "결과 확인하기" : "다음"} />
       </section>
     </main>
   );
