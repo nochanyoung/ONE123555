@@ -48,7 +48,8 @@
 }
 
 .input {
-  @apply w-full rounded-lg border border-ink-200 px-3 py-2 text-sm font-normal text-ink-900 outline-none;
+  /* text-base(16px) 미만이면 iOS Safari 가 포커스 시 화면을 자동 확대한다. 내리지 말 것. */
+  @apply w-full rounded-xl border border-ink-200 px-4 py-3.5 text-base font-normal text-ink-900 outline-none;
 }
 
 .input:focus {

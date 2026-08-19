@@ -8,7 +8,7 @@ import { getRequiredQuestions, type QuestionDef } from "@/lib/questions";
 import { buildQuestionSteps } from "@/lib/steps";
 import { policiesForRegion } from "@/lib/region";
 import { loadListing, loadProfile, saveProfile } from "@/lib/storage";
-import { ProgressBar, StepNav } from "../Stepper";
+import { AppBar, BottomCta, OptionButton, StepHeading } from "../Stepper";
 
 const policies = policiesData as PolicyMeta[];
 
@@ -72,7 +72,7 @@ export default function EligibilityPage() {
     router.push("/result");
   }
 
-  function handlePrev() {
+  function handleBack() {
     setError(null);
     if (step === 0) return router.push("/");
     setStep(step - 1);
@@ -86,38 +86,30 @@ export default function EligibilityPage() {
   const isLast = step === steps.length - 1;
 
   return (
-    <main className="mx-auto flex max-w-lg flex-col gap-6 px-5 py-10">
-      <div>
-        <p className="text-sm font-semibold text-brand-700">정책 판정 질문</p>
-        <h1 className="mt-1 text-xl font-extrabold">모르면 &lsquo;모름&rsquo;을 선택하세요</h1>
-        <p className="mt-1 text-sm text-ink-500">
-          공식 소득인정액처럼 정확히 모르는 값은 임의로 추정하지 않습니다. 모름으로 두면
-          &lsquo;조건 충족 시 가능&rsquo;으로 분류하고 확인 방법을 안내합니다.
-        </p>
-      </div>
+    <div className="mx-auto flex min-h-screen max-w-lg flex-col px-5">
+      {/* 계약조건 2스텝이 앞에 있으므로 전체 진행률에 더해서 보여준다. */}
+      <AppBar onBack={handleBack} current={step + 3} total={steps.length + 2} />
 
-      <section className="flex flex-col gap-5 rounded-2xl border border-ink-200 bg-white p-5 shadow-sm">
-        {/* 계약조건 2스텝이 앞에 있으므로 전체 진행률에 더해서 보여준다. */}
-        <ProgressBar current={step + 3} total={steps.length + 2} />
+      <main key={step} className="step-in flex flex-1 flex-col gap-8 py-7">
+        <StepHeading
+          title={current.heading}
+          description="정확히 모르는 값은 추정하지 않아요. '모름'을 고르면 '조건 충족 시 가능'으로 분류하고 확인 방법을 알려드려요."
+        />
 
-        <div key={step} className="step-in flex flex-col gap-5">
-          <h2 className="text-sm font-bold text-ink-900">{current.title}</h2>
-
-          {current.questions.map((q) => (
-            <QuestionField
-              key={q.key}
-              question={q}
-              value={profile[q.key]}
-              onChange={(v) => update(q.key, v as never)}
-            />
-          ))}
-        </div>
+        {current.questions.map((q) => (
+          <QuestionField
+            key={q.key}
+            question={q}
+            value={profile[q.key]}
+            onChange={(v) => update(q.key, v as never)}
+          />
+        ))}
 
         {error && <p className="text-sm font-semibold text-red-600">{error}</p>}
+      </main>
 
-        <StepNav onPrev={handlePrev} onNext={handleNext} nextLabel={isLast ? "결과 확인하기" : "다음"} />
-      </section>
-    </main>
+      <BottomCta onClick={handleNext}>{isLast ? "결과 확인하기" : "다음"}</BottomCta>
+    </div>
   );
 }
 
@@ -133,9 +125,11 @@ function QuestionField({
   const isUnknown = value === "unknown";
 
   return (
-    <div className="flex flex-col gap-2">
-      <p className="text-sm font-bold text-ink-900">{question.label}</p>
-      <p className="text-xs text-ink-500">{question.why}</p>
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-1">
+        <p className="text-base font-bold leading-snug text-ink-900">{question.label}</p>
+        <p className="text-xs leading-relaxed text-ink-500">{question.why}</p>
+      </div>
 
       {question.type === "date" && (
         <input
@@ -147,35 +141,36 @@ function QuestionField({
       )}
 
       {question.type === "boolean" && (
-        <div className="flex gap-2">
-          <ToggleButton active={value === true} onClick={() => onChange(true)}>
+        <div className="flex flex-col gap-2">
+          <OptionButton active={value === true} onClick={() => onChange(true)}>
             그렇다
-          </ToggleButton>
-          <ToggleButton active={value === false} onClick={() => onChange(false)}>
+          </OptionButton>
+          <OptionButton active={value === false} onClick={() => onChange(false)}>
             아니다
-          </ToggleButton>
+          </OptionButton>
           {question.allowUnknown && (
-            <ToggleButton active={isUnknown} onClick={() => onChange("unknown")}>
+            <OptionButton active={isUnknown} onClick={() => onChange("unknown")}>
               모름
-            </ToggleButton>
+            </OptionButton>
           )}
         </div>
       )}
 
       {question.type === "number" && (
-        <div className="flex gap-2">
+        <div className="flex flex-col gap-2">
           <input
             type="number"
-            className="input"
+            inputMode="numeric"
+            className="input disabled:bg-sand-50 disabled:text-ink-500"
             disabled={isUnknown}
             value={isUnknown ? "" : typeof value === "number" ? value : ""}
             onChange={(e) => onChange(Number(e.target.value))}
             min={0}
           />
           {question.allowUnknown && (
-            <ToggleButton active={isUnknown} onClick={() => onChange(isUnknown ? 0 : "unknown")}>
+            <OptionButton active={isUnknown} onClick={() => onChange(isUnknown ? 0 : "unknown")}>
               모름
-            </ToggleButton>
+            </OptionButton>
           )}
         </div>
       )}
@@ -195,27 +190,5 @@ function QuestionField({
         </select>
       )}
     </div>
-  );
-}
-
-function ToggleButton({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`flex-1 rounded-lg border px-3 py-2 text-sm font-semibold ${
-        active ? "border-brand-600 bg-brand-50 text-brand-900" : "border-ink-200 text-ink-500"
-      }`}
-    >
-      {children}
-    </button>
   );
 }
