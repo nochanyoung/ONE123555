@@ -1,12 +1,20 @@
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+@import "tailwindcss";
+
+@theme {
+  --color-brand: #ea580c;
+  --color-brand-dark: #9a3412;
 }
 
 body {
   font-family: "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
-  background: #f3f4f6;
+  background: #fafaf9;
   color: #1f2937;
-  min-height: 100vh;
+}
+
+.input {
+  @apply w-full rounded-lg border border-stone-300 px-3 py-2 text-sm font-normal text-stone-900 outline-none;
+}
+
+.input:focus {
+  @apply border-brand ring-2 ring-orange-100;
 }

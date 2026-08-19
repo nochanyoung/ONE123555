@@ -1,0 +1,205 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import policiesData from "@/data/policies.json";
+import type { ListingInput, PolicyMeta, PolicyResult, PolicyStatus } from "@/lib/types";
+import { buildCalculationSummary } from "@/lib/summary";
+import { loadListing, loadProfile } from "@/lib/storage";
+
+const policies = policiesData as PolicyMeta[];
+
+const STATUS_ORDER: PolicyStatus[] = ["예상적용", "조건충족시가능", "대상아님", "신청불가"];
+const STATUS_STYLE: Record<PolicyStatus, string> = {
+  예상적용: "bg-green-100 text-green-800",
+  조건충족시가능: "bg-amber-100 text-amber-800",
+  대상아님: "bg-stone-200 text-stone-600",
+  신청불가: "bg-stone-200 text-stone-500",
+};
+
+function todayISO(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+export default function ResultPage() {
+  const router = useRouter();
+  const [listing, setListing] = useState<ListingInput | null>(null);
+  const [asOf] = useState(todayISO());
+
+  useEffect(() => {
+    const savedListing = loadListing();
+    const savedProfile = loadProfile();
+    if (!savedListing || !savedProfile) {
+      router.replace("/");
+      return;
+    }
+    setListing(savedListing);
+  }, [router]);
+
+  const profile = loadProfile();
+
+  const summary = useMemo(() => {
+    if (!listing || !profile) return null;
+    return buildCalculationSummary(policies, profile, listing, asOf);
+  }, [listing, profile, asOf]);
+
+  if (!listing || !profile || !summary) {
+    return <main className="p-10 text-center text-stone-400">불러오는 중...</main>;
+  }
+
+  const includedResults = summary.results.filter((r) =>
+    summary.bestCombination.includedPolicyIds.includes(r.policy.id)
+  );
+  const unknownFromIncluded = includedResults
+    .filter((r) => r.status === "조건충족시가능")
+    .flatMap((r) => r.unknownLabels.map((label) => ({ policy: r.policy.name, label })));
+
+  const upfrontCash = listing.deposit + (listing.contractType === "연세" ? listing.rentOrYearlyAmount : 0);
+
+  const grouped = STATUS_ORDER.map((status) => ({
+    status,
+    items: summary.results.filter((r) => r.status === status),
+  })).filter((g) => g.items.length > 0);
+
+  return (
+    <main className="mx-auto flex max-w-lg flex-col gap-6 px-5 py-10">
+      <div>
+        <p className="text-sm font-semibold text-brand">3. 판정 결과</p>
+        <h1 className="mt-1 text-xl font-extrabold">최대 지원 가능액과 최종 예상 주거비</h1>
+      </div>
+
+      <section className="rounded-2xl border-2 border-brand bg-orange-50 p-5">
+        <p className="text-xs font-semibold text-brand-dark">최대 지원 가능액 (12개월 기준)</p>
+        <p className="text-3xl font-extrabold text-brand-dark">
+          {summary.maxSupportAmount.toLocaleString()}원
+        </p>
+
+        <div className="my-3 h-px bg-orange-200" />
+
+        <p className="text-xs font-semibold text-stone-500">최종 예상 주거비 (명목 지출 − 최대 지원 가능액)</p>
+        <p className="text-3xl font-extrabold text-stone-800">
+          {summary.finalEstimatedHousingCost.toLocaleString()}원
+        </p>
+        <p className="mt-1 text-xs text-stone-400">
+          명목 총 지출 {summary.nominalTotalCost.toLocaleString()}원 기준
+        </p>
+
+        {unknownFromIncluded.length > 0 && (
+          <div className="mt-3 rounded-lg bg-white/70 p-3 text-xs text-amber-800">
+            <p className="font-bold">⚠️ 이 금액에는 아직 확인되지 않은 조건이 포함되어 있습니다</p>
+            <ul className="mt-1 list-disc pl-4">
+              {unknownFromIncluded.map((u, i) => (
+                <li key={i}>
+                  [{u.policy}] {u.label}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </section>
+
+      <section className="rounded-2xl border border-stone-200 bg-white p-4 text-sm">
+        <p className="font-bold text-stone-700">계약 시 필요한 목돈과 지급 시점은 다릅니다</p>
+        <p className="mt-1 text-stone-500">
+          계약 당일 필요한 현금: <strong>{upfrontCash.toLocaleString()}원</strong> (보증금
+          {listing.contractType === "연세" ? " + 연세 선납액" : ""})
+        </p>
+        <p className="mt-1 text-stone-400">
+          월 단위 지원금은 계약 이후 매월 나눠 지급되며, 계약 당일 필요한 목돈을 줄여주지 않습니다.
+        </p>
+      </section>
+
+      <section className="flex flex-col gap-4">
+        {grouped.map((group) => (
+          <div key={group.status}>
+            <h2 className="mb-2 text-sm font-bold text-stone-500">
+              {group.status} ({group.items.length})
+            </h2>
+            <div className="flex flex-col gap-3">
+              {group.items.map((r) => (
+                <PolicyCard key={r.policy.id} result={r} />
+              ))}
+            </div>
+          </div>
+        ))}
+      </section>
+
+      <p className="rounded-xl bg-stone-100 p-4 text-xs leading-relaxed text-stone-500">
+        최대 지원 가능액은 입력값을 바탕으로 조건 충족 시 받을 수 있는 상한을 계산한 값입니다. 실제
+        소득인정액, 제출 서류, 예산 상황 등에 따라 지원액이 더 적거나 없을 수 있으며 최종 자격과
+        지급액은 해당 기관이 결정합니다.
+        <br />
+        결과 기준일: {asOf}
+      </p>
+
+      <button
+        onClick={() => router.push("/eligibility")}
+        className="rounded-xl border border-stone-300 py-3 text-sm font-bold text-stone-600"
+      >
+        답변 수정하기
+      </button>
+    </main>
+  );
+}
+
+function PolicyCard({ result }: { result: PolicyResult }) {
+  const { policy } = result;
+  return (
+    <div className="rounded-2xl border border-stone-200 bg-white p-4">
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <p className="text-sm font-bold text-stone-800">{policy.name}</p>
+          <p className="text-xs text-stone-400">{policy.agency} · {policy.regionScope}</p>
+        </div>
+        <span className={`shrink-0 rounded-full px-2 py-1 text-xs font-bold ${STATUS_STYLE[result.status]}`}>
+          {result.status}
+        </span>
+      </div>
+
+      <p className="mt-2 text-xs text-stone-500">{policy.benefitSummary}</p>
+
+      {result.estimatedAmount > 0 && (
+        <p className="mt-1 text-sm font-bold text-brand-dark">
+          이 정책 단독 예상액: {result.estimatedAmount.toLocaleString()}원
+        </p>
+      )}
+
+      {result.passedLabels.length > 0 && (
+        <RequirementList title="충족" items={result.passedLabels} tone="text-green-700" />
+      )}
+      {result.unknownLabels.length > 0 && (
+        <RequirementList title="확인 필요" items={result.unknownLabels} tone="text-amber-700" />
+      )}
+      {result.failedLabels.length > 0 && (
+        <RequirementList title="미충족" items={result.failedLabels} tone="text-stone-500" />
+      )}
+
+      <div className="mt-3 flex flex-wrap gap-3 text-xs">
+        <a href={policy.sourceUrl} target="_blank" rel="noreferrer" className="font-semibold text-stone-500 underline">
+          공식 출처
+        </a>
+        <a href={policy.applyUrl} target="_blank" rel="noreferrer" className="font-semibold text-brand underline">
+          신청 페이지로 이동
+        </a>
+      </div>
+
+      <p className="mt-2 text-[11px] text-stone-400">
+        {policy.effectiveYear}년 기준 · {policy.verifiedAt ? `${policy.verifiedAt} 확인` : "팀 교차검수 전 (미검증 초안)"}
+      </p>
+      {policy.notes && <p className="mt-1 text-[11px] text-stone-400">{policy.notes}</p>}
+    </div>
+  );
+}
+
+function RequirementList({ title, items, tone }: { title: string; items: string[]; tone: string }) {
+  return (
+    <div className="mt-2">
+      <p className={`text-xs font-bold ${tone}`}>{title}</p>
+      <ul className="mt-1 list-disc pl-4 text-xs text-stone-500">
+        {items.map((item, i) => (
+          <li key={i}>{item}</li>
+        ))}
+      </ul>
+    </div>
+  );
+}
