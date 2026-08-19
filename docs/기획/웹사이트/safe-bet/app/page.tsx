@@ -55,15 +55,15 @@ export default function InputPage() {
   return (
     <main className="mx-auto flex max-w-lg flex-col gap-6 px-5 py-10">
       <div className="text-center">
-        <p className="text-sm font-semibold text-brand">청년 주거지원 실부담 계산기</p>
+        <p className="text-sm font-semibold text-brand-700">청년 주거지원 실부담 계산기</p>
         <h1 className="mt-2 text-2xl font-extrabold leading-snug">
           이 방에 살면, 지원금을 반영해
           <br />내가 실제로 얼마를 내야 할까?
         </h1>
       </div>
 
-      <section className="flex flex-col gap-4 rounded-2xl border border-stone-200 bg-white p-5 shadow-sm">
-        <h2 className="text-sm font-bold text-stone-500">1. 계약 조건 입력</h2>
+      <section className="flex flex-col gap-4 rounded-2xl border border-ink-200 bg-white p-5 shadow-sm">
+        <h2 className="text-sm font-bold text-ink-500">1. 계약 조건 입력</h2>
 
         <Field label="거주 예정 지역 (시·군·구)">
           <input
@@ -83,8 +83,8 @@ export default function InputPage() {
                 onClick={() => update("contractType", type)}
                 className={`flex-1 rounded-lg border px-3 py-2 text-sm font-semibold ${
                   form.contractType === type
-                    ? "border-brand bg-orange-50 text-brand-dark"
-                    : "border-stone-200 text-stone-500"
+                    ? "border-brand-600 bg-brand-50 text-brand-900"
+                    : "border-ink-200 text-ink-500"
                 }`}
               >
                 {type}
@@ -126,7 +126,7 @@ export default function InputPage() {
         </Field>
 
         {form.contractType === "연세" && monthlyEquivalent > 0 && (
-          <p className="rounded-lg bg-orange-50 px-3 py-2 text-sm text-brand-dark">
+          <p className="rounded-lg bg-brand-50 px-3 py-2 text-sm text-brand-900">
             연세 {form.rentOrYearlyAmount.toLocaleString()}원 ÷ {form.months}개월 = 월 환산{" "}
             <strong>{monthlyEquivalent.toLocaleString()}원</strong>
           </p>
@@ -144,7 +144,7 @@ export default function InputPage() {
           </select>
         </Field>
 
-        <label className="flex items-start gap-2 text-sm text-stone-600">
+        <label className="flex items-start gap-2 text-sm text-ink-600">
           <input
             type="checkbox"
             className="mt-1"
@@ -158,7 +158,7 @@ export default function InputPage() {
 
         <button
           onClick={handleSubmit}
-          className="mt-2 rounded-xl bg-brand py-3 text-base font-bold text-white active:scale-[0.99]"
+          className="mt-2 rounded-xl bg-brand-600 py-3 text-base font-bold text-white active:scale-[0.99]"
         >
           다음: 정책 판정 질문으로
         </button>
@@ -169,7 +169,7 @@ export default function InputPage() {
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <label className="flex flex-col gap-1 text-sm font-semibold text-stone-700">
+    <label className="flex flex-col gap-1 text-sm font-semibold text-ink-700">
       {label}
       {children}
     </label>
