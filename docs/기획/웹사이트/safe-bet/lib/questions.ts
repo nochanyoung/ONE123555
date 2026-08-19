@@ -11,7 +11,7 @@ export interface QuestionDef {
   allowUnknown: boolean;
 }
 
-const QUESTION_REGISTRY: Record<RequiredInputKey, QuestionDef> = {
+export const QUESTION_REGISTRY: Record<RequiredInputKey, QuestionDef> = {
   birthDate: {
     key: "birthDate",
     label: "생년월일",

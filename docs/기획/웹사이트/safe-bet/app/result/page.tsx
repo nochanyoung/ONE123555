@@ -7,6 +7,7 @@ import loanProductsData from "@/data/loan-products.json";
 import type { ListingInput, LoanProductMeta, PolicyMeta, PolicyResult, PolicyStatus } from "@/lib/types";
 import { buildCalculationSummary } from "@/lib/summary";
 import { loadListing, loadProfile } from "@/lib/storage";
+import { policiesForRegion } from "@/lib/region";
 
 const policies = policiesData as PolicyMeta[];
 const loanProducts = loanProductsData as LoanProductMeta[];
@@ -42,7 +43,10 @@ export default function ResultPage() {
 
   const summary = useMemo(() => {
     if (!listing || !profile) return null;
-    return buildCalculationSummary(policies, profile, listing, asOf);
+    // 판정질문 화면과 같은 후보 집합을 써야 한다. 여기서 지역 밖 정책을 같이 빼지 않으면
+    // 묻지 않은 질문이 unknown 으로 남아 그 정책이 '조건충족시가능'으로 잘못 뜬다.
+    const scoped = policiesForRegion(policies, listing.region);
+    return buildCalculationSummary(scoped, profile, listing, asOf);
   }, [listing, profile, asOf]);
 
   if (!listing || !profile || !summary) {
